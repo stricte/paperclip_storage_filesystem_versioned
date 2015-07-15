@@ -18,8 +18,12 @@ module Paperclip
         end
 
         Paperclip.interpolates(:version) do |attachment, style|
-          @version_proc.call(attachment, style) if @version_proc.is_a?(Proc)
+          attachment.version_proc.call(attachment, style) if attachment.version_proc.is_a?(Proc)
         end unless Paperclip::Interpolations.respond_to? :version
+      end
+
+      def version_proc
+        @version_proc
       end
 
       def exists?(style_name = default_style)
