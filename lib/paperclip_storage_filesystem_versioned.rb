@@ -6,20 +6,28 @@ module Paperclip
     module FilesystemVersioned
       def self.extended base
         base.instance_eval do
-          @version_proc = @options[:version_proc] || Proc.new { |attachment, style| attachment.instance.versions.count}
+          @versioning = @options[:versioning] || true
 
-          unless @options[:url].to_s.match(/\/:version\//)
-            @options[:url] = @options[:url].gsub(/\/:id_partition\//, '/:id_partition/:version/')
-          end
+          if @versioning
+            @version_proc = @options[:version_proc] || Proc.new { |attachment, style| attachment.instance.versions.count}
 
-          unless @options[:path].to_s.match(/\/:version\//)
-            @options[:path] = @options[:path].gsub(/\/:id_partition\//, '/:id_partition/:version/')
+            unless @options[:url].to_s.match(/\/:version\//)
+              @options[:url] = @options[:url].gsub(/\/:id_partition\//, '/:id_partition/:version/')
+            end
+
+            unless @options[:path].to_s.match(/\/:version\//)
+              @options[:path] = @options[:path].gsub(/\/:id_partition\//, '/:id_partition/:version/')
+            end
           end
         end
 
         Paperclip.interpolates(:version) do |attachment, style|
           attachment.version_proc.call(attachment, style) if attachment.version_proc.is_a?(Proc)
         end unless Paperclip::Interpolations.respond_to? :version
+      end
+
+      def versioning
+        @versioning
       end
 
       def version_proc
@@ -59,27 +67,32 @@ module Paperclip
       end
 
       def flush_deletes #:nodoc:
-        @queued_for_delete.each do |path|
-          begin
-            log("deleting #{path}")
-            FileUtils.rm(path) if File.exist?(path)
-          rescue Errno::ENOENT => e
-            # ignore file-not-found, let everything else pass
-          end
-          begin
-            while(true)
-              path = File.dirname(path)
-              FileUtils.rmdir(path)
-              break if File.exist?(path) # Ruby 1.9.2 does not raise if the removal failed.
+        if versioning
+          log("Cleared list of queued_for_delete because of versionig turned on")
+          @queued_for_delete = []
+        else
+          @queued_for_delete.each do |path|
+            begin
+              log("deleting #{path}")
+              FileUtils.rm(path) if File.exist?(path)
+            rescue Errno::ENOENT => e
+              # ignore file-not-found, let everything else pass
             end
-          rescue Errno::EEXIST, Errno::ENOTEMPTY, Errno::ENOENT, Errno::EINVAL, Errno::ENOTDIR, Errno::EACCES
-            # Stop trying to remove parent directories
-          rescue SystemCallError => e
-            log("There was an unexpected error while deleting directories: #{e.class}")
-            # Ignore it
+            begin
+              while(true)
+                path = File.dirname(path)
+                FileUtils.rmdir(path)
+                break if File.exist?(path) # Ruby 1.9.2 does not raise if the removal failed.
+              end
+            rescue Errno::EEXIST, Errno::ENOTEMPTY, Errno::ENOENT, Errno::EINVAL, Errno::ENOTDIR, Errno::EACCES
+              # Stop trying to remove parent directories
+            rescue SystemCallError => e
+              log("There was an unexpected error while deleting directories: #{e.class}")
+              # Ignore it
+            end
           end
+          @queued_for_delete = []
         end
-        @queued_for_delete = []
       end
 
       def copy_to_local_file(style, local_dest_path)
