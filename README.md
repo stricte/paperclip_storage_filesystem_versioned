@@ -18,6 +18,10 @@ Or install it yourself as:
 
     $ gem install paperclip_storage_filesystem_versioned
 
+## Prerequisites
+
+Paper_trail or similar installed. This storage do not make own versions, just save every new file in another path based on version number of model.
+
 ## Usage
 
 Basic example (with paper_trial enabled):
