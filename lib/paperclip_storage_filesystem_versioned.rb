@@ -9,11 +9,11 @@ module Paperclip
           @version_proc = @options[:version_proc] || Proc.new { |attachment, style| attachment.instance.versions.count}
 
           unless @options[:url].to_s.match(/\/:version\//)
-            @options[:url] = @options[:url].gsub(/\/:class\/:attachment\//, '/:class/:attachment/:version/')
+            @options[:url] = @options[:url].gsub(/\/:id_partition\//, '/:id_partition/:version/')
           end
 
           unless @options[:path].to_s.match(/\/:version\//)
-            @options[:path] = @options[:path].gsub(/\/:class\/:attachment\//, '/:class/:attachment/:version/')
+            @options[:path] = @options[:path].gsub(/\/:id_partition\//, '/:id_partition/:version/')
           end
         end
 
